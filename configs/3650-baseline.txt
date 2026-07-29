@@ -1,0 +1,24 @@
+================================================================
+DEVICE: Cisco Catalyst 3650-24PD
+DATE CAPTURED: July 28, 2026
+PURPOSE: Day 0 baseline — before any configuration changes
+================================================================
+
+--- show version ---
+Cisco IOS XE Software, Version 16.12.05b
+Cisco IOS Software [Gibraltar], Catalyst L3 Switch Software
+(CAT3K_CAA-UNIVERSALK9-M), Version 16.12.5b, RELEASE SOFTWARE (fc3)
+Compiled Thu 25-Mar-21 13:09 by mcpre
+
+--- show inventory ---
+NAME: "c36xx Stack"
+PID: WS-C3650-24PD-S   VID: V03   SN: FDO2006E03V
+
+NAME: "Switch 1 - Power Supply A"
+PID: PWR-C2-640WAC     VID: V02   SN: DCB2001BA52
+
+--- show license status ---
+Smart Licensing: ENABLED
+Registration: UNREGISTERED
+License Authorization: EVAL MODE
+Evaluation Period Remaining: 45 days (as of July 28, 2026)
