@@ -1,0 +1,30 @@
+================================================================
+DEVICE: Cisco ASA 5505
+DATE CAPTURED: July 28, 2026
+PURPOSE: Day 0 baseline — before any configuration changes
+================================================================
+
+--- show version ---
+ASA OS Version: 8.2(5)26
+ASDM Version: 5.2(4)
+System image: disk0:/asa825-26-k8.bin
+Hardware: ASA5505, 256MB RAM, CPU Geode 500MHz
+Flash: 128MB Internal ATA Compact Flash
+
+--- show inventory ---
+PID: ASA5505   VID: V06   SN: JMX1346Z2Y5
+
+--- show boot ---
+BOOT variable: disk0:/asa825-26-k8.bin
+
+--- show flash (images only) ---
+asa724-k8.bin     — 8.1MB  (Nov 2009, unused legacy image)
+asa825-26-k8.bin  — 14.7MB (Apr 2012, active boot image)
+asdm-524.bin      — 6.2MB  (Nov 2009, old ASDM)
+asdm-645-106.bin  — 16.1MB (Apr 2012, current ASDM)
+
+--- notes ---
+- Base license: 3 VLANs, 10 inside hosts
+- 3DES/AES VPN encryption enabled
+- Upgrade path: 8.2(5) → 9.2(4) pending image acquisition
+- Old images (asa724, asdm-524) can be deleted to free space
