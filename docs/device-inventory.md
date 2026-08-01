@@ -32,17 +32,18 @@
 | **RAM** | 4GB |
 | **Flash** | 1.6GB |
 | **Ports** | 24x PoE+ GigabitEthernet, 2x 10G SFP+ |
-| **Console** | COM3 via Keyspan (shared with ASA) |
+| **Console** | COM3 via Keyspan (shared) |
 
 ---
 
-## Cisco ISR Router
+## Cisco 891-K9 Router
 | Field | Detail |
 |---|---|
 | **Role** | WAN simulation, dynamic routing |
-| **Model** | TBD — incoming |
-| **OS Version** | TBD |
-| **Serial** | TBD |
+| **IOS Version** | 15.1(4)M4 |
+| **Serial** | FTX1630831E |
+| **Ports** | 8x FastEthernet, 1x GigabitEthernet |
+| **Console** | COM3 via Keyspan (shared) |
 
 ---
 
