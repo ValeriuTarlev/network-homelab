@@ -1,0 +1,20 @@
+================================================================
+DEVICE: Cisco 891-K9 Router
+DATE CAPTURED: July 28, 2026
+PURPOSE: Day 0 baseline — before any configuration changes
+================================================================
+
+--- show version ---
+IOS Version: 15.1(4)M4
+Image: flash:c890-universalk9-mz.151-4.M4.bin
+Uptime: freshly reset
+
+--- show inventory ---
+PID: CISCO891-K9   VID: V02   SN: FTX1630831E
+
+--- notes ---
+- Recovered from password protected config via rommon
+- Previous config had VLANs 7, 10, 20, 60 from prior deployment
+- Config wiped and fresh credentials set
+- IOS 15.1(4)M4 supports OSPF, EIGRP, BGP, NAT, VPN
+- GigabitEthernet0 will be used as uplink to ASA
