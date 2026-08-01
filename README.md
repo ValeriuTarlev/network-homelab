@@ -8,13 +8,15 @@ enterprise networking skills beyond CCNA level.
 | Device | Model | Role |
 |---|---|---|
 | Firewall | Cisco ASA 5505 | Zones, NAT, VPN |
-| Switch | Cisco Catalyst 3650-24PD | VLANs, Trunking, Inter-VLAN |
-| Router | Cisco ISR (incoming) | Routing protocols |
-| Management | Keyspan USB Console Cable | Out-of-band access |
+| Switch | Cisco Catalyst 3650-24PD | VLANs, trunking, inter-VLAN routing |
+| Router | Cisco 891-K9 | Routing protocols, WAN simulation |
+| Management | Keyspan USA-19HS | Console access via COM3 |
 
 ## 📋 Current Status
 
-> Active: Setting up lab environment — devices online and baseline documented.
+> All three devices online and baselined. 
+> IP addressing scheme designed. 
+> Beginning interface configuration.
 
 ## 📜 Certifications
 
