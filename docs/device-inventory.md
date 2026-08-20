@@ -32,7 +32,7 @@
 | **RAM** | 4GB |
 | **Flash** | 1.6GB |
 | **Ports** | 24x PoE+ GigabitEthernet, 2x 10G SFP+ |
-| **Console** | COM3 via Keyspan (shared) |
+| Console | COM5 via USB direct (mini-USB) |
 
 ---
 
