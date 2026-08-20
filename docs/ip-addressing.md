@@ -14,7 +14,7 @@
 
 | Interface | VLAN | IP Address | Subnet Mask | Role |
 |---|---|---|---|---|
-| Ethernet0/0 | VLAN 1 (Outside) | 192.168.1.200 | 255.255.255.0 | Uplink to home router |
+| Ethernet0/0 | VLAN 1 (Outside) | 192.168.1.2 | 255.255.255.0 | Uplink to home router |
 | Ethernet0/1 | VLAN 10 (Inside) | 192.168.10.1 | 255.255.255.0 | Lab gateway |
 | Ethernet0/2 | VLAN 20 (DMZ) | 192.168.20.1 | 255.255.255.0 | DMZ gateway |
 
