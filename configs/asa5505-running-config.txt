@@ -1,0 +1,47 @@
+================================================================
+DEVICE: Cisco ASA 5505
+DATE CONFIGURED: August 2026
+================================================================
+
+hostname ASA-5505
+domain-name homelab.local
+
+! --- Interface Configuration ---
+
+interface Ethernet0/0
+! Outside port — VLAN 1 by default, no command needed
+
+interface Ethernet0/1
+ switchport access vlan 10
+! Inside port — assigned to VLAN 10
+
+interface Vlan1
+ nameif outside
+ security-level 0
+ ip address 192.168.1.2 255.255.255.0
+! Outside zone — security level 0 (untrusted)
+! Connected to home router via Eth0/0
+
+interface Vlan10
+ nameif inside
+ security-level 100
+ ip address 192.168.10.1 255.255.255.0
+! Inside zone — security level 100 (fully trusted)
+! Connected to Catalyst 3650 G1/0/1 via Eth0/1
+
+interface Vlan20
+ no forward interface Vlan1
+ nameif dmz
+ security-level 50
+ ip address 192.168.20.1 255.255.255.0
+! DMZ zone — security level 50 (semi-trusted)
+! no forward required — Base license limits fully routed interfaces to 2
+
+! --- Routing ---
+
+route outside 0.0.0.0 0.0.0.0 192.168.1.1
+! Default route via home router on outside interface
+
+! --- Boot ---
+
+boot system disk0:/asa825-26-k8.bin
