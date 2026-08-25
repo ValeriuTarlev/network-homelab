@@ -1,0 +1,72 @@
+================================================================
+DEVICE: Cisco Catalyst 3650-24PD
+IOS-XE: 16.12.5b  |  License: IP Base (Smart License, evaluation)
+DATE: August 2026
+================================================================
+
+hostname SW-3650
+ip domain-name homelab.local
+enable secret <redacted>
+
+! --- VLANs ---
+
+vlan 10
+ name INSIDE
+! VLAN 20 (DMZ) is not configured here — the DMZ host attaches directly
+! to ASA Ethernet0/2, so it would have no member ports on this switch.
+
+! --- Management SVI ---
+
+interface Vlan1
+ shutdown
+! Default VLAN unused 
+
+interface Vlan10
+ ip address 192.168.10.2 255.255.255.0
+ no shutdown
+
+ip default-gateway 192.168.10.1
+! Only honoured while ip routing is disabled
+! Keeping the switch at Layer 2 forces inter-VLAN traffic through the ASA.
+
+! --- Uplinks ---
+
+interface GigabitEthernet1/0/1
+ description Uplink to ASA5505 E0/1
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+
+interface GigabitEthernet1/0/2
+ description Uplink to 891 Fa0/0
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+
+! Access ports, not trunks — only VLAN 10 crosses either link. 
+! The ASA 5505 base license does not support 802.1Q trunking.
+
+! --- Management ---
+
+crypto key generate rsa modulus 2048
+ip ssh version 2
+username admin privilege 15 secret <redacted>
+!
+line vty 0 15
+ transport input ssh
+ login local
+ exec-timeout 10 0
+!
+line con 0
+ exec-timeout 10 0
+
+
+! --- Verification ---
+!
+! Vlan1                  unassigned     up/down
+! Vlan10                 192.168.10.2   up/up
+! GigabitEthernet1/0/1   connected      vlan 10
+! GigabitEthernet1/0/2   down/down      (891 not yet cabled)
+!
+! ping 192.168.10.1 — success (ASA inside)
+! ping 8.8.8.8      — success (via ASA PAT)
