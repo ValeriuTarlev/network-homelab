@@ -45,3 +45,26 @@ route outside 0.0.0.0 0.0.0.0 192.168.1.1
 ! --- Boot ---
 
 boot system disk0:/asa825-26-k8.bin
+
+! --- Verification ---
+
+! --- Verification ---
+!
+! show interface ip brief
+!
+! Ethernet0/0    unassigned     up                    up
+! Ethernet0/1    unassigned     up                    up
+! Ethernet0/2    unassigned     administratively down down
+! Vlan1          192.168.1.2    up                    up    (outside)
+! Vlan10         192.168.10.1   up                    up    (inside)
+! Vlan20         192.168.20.1   down                  down  (dmz)
+!
+! Vlan20 is down/down — Ethernet0/2 is shut and no DMZ host is cabled.
+! The 5505's VLAN interfaces require at least one associated switchport
+! in an up state. Interface config is complete and awaiting a host.
+!
+! ping 192.168.10.2  (Catalyst 3650 SVI)  — 5/5, min/avg/max 1/2/10 ms
+! ping 192.168.1.1   (home router)        — 5/5, min/avg/max 1/2/10 ms
+!
+! Inside and outside paths verified from the ASA. Return traffic confirmed
+! from the switch side by ping to 192.168.10.1.
