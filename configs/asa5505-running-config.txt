@@ -1,70 +1,82 @@
 ================================================================
 DEVICE: Cisco ASA 5505
-DATE CONFIGURED: August 2026
+ASA OS: 8.2(5)26  |  License: Base
+DATE: August 2026
 ================================================================
 
 hostname ASA-5505
 domain-name homelab.local
+enable password <redacted>
 
-! --- Interface Configuration ---
+! --- Interfaces ---
 
 interface Ethernet0/0
-! Outside port — VLAN 1 by default, no command needed
+! Outside port — VLAN 1 by default, uplink to home router
 
 interface Ethernet0/1
  switchport access vlan 10
-! Inside port — assigned to VLAN 10
+! Inside port — to Catalyst 3650 G1/0/1
 
 interface Vlan1
  nameif outside
  security-level 0
  ip address 192.168.1.2 255.255.255.0
-! Outside zone — security level 0 (untrusted)
-! Connected to home router via Eth0/0
 
 interface Vlan10
  nameif inside
  security-level 100
  ip address 192.168.10.1 255.255.255.0
-! Inside zone — security level 100 (fully trusted)
-! Connected to Catalyst 3650 G1/0/1 via Eth0/1
 
 interface Vlan20
  no forward interface Vlan1
  nameif dmz
  security-level 50
  ip address 192.168.20.1 255.255.255.0
-! DMZ zone — security level 50 (semi-trusted)
-! no forward required — Base license limits fully routed interfaces to 2
+! no forward required — Base license allows only 2 fully routed interfaces
 
 ! --- Routing ---
 
 route outside 0.0.0.0 0.0.0.0 192.168.1.1
-! Default route via home router on outside interface
+
+! --- NAT / PAT ---
+
+nat (inside) 1 192.168.10.0 255.255.255.0
+global (outside) 1 interface
+! Pre-8.3 syntax. PAT to the outside interface address.
+
+! --- Inspection ---
+
+class-map inspection_default
+ match default-inspection-traffic
+!
+policy-map global_policy
+ class inspection_default
+  inspect icmp
+!
+service-policy global_policy global
+! class-map match criteria and service-policy were both missing after an
+! earlier write erase — restored. Without both, ICMP replies are dropped.
+
+! --- Management ---
+
+username admin password <redacted> privilege 15
+aaa authentication ssh console LOCAL
+ssh 192.168.10.0 255.255.255.0 inside
+ssh version 2
+ssh timeout 10
+! SSH from IOS-XE 16.12 clients fails at key exchange — ASA 8.2 offers only
+! diffie-hellman-group1-sha1, which newer IOS-XE has removed. Console only.
 
 ! --- Boot ---
 
 boot system disk0:/asa825-26-k8.bin
 
 ! --- Verification ---
-
-! --- Verification ---
 !
-! show interface ip brief
+! Vlan1   192.168.1.2    up/up    (outside)
+! Vlan10  192.168.10.1   up/up    (inside)
+! Vlan20  192.168.20.1   down/down (dmz — E0/2 shut, no host attached)
 !
-! Ethernet0/0    unassigned     up                    up
-! Ethernet0/1    unassigned     up                    up
-! Ethernet0/2    unassigned     administratively down down
-! Vlan1          192.168.1.2    up                    up    (outside)
-! Vlan10         192.168.10.1   up                    up    (inside)
-! Vlan20         192.168.20.1   down                  down  (dmz)
-!
-! Vlan20 is down/down — Ethernet0/2 is shut and no DMZ host is cabled.
-! The 5505's VLAN interfaces require at least one associated switchport
-! in an up state. Interface config is complete and awaiting a host.
-!
-! ping 192.168.10.2  (Catalyst 3650 SVI)  — 5/5, min/avg/max 1/2/10 ms
-! ping 192.168.1.1   (home router)        — 5/5, min/avg/max 1/2/10 ms
-!
-! Inside and outside paths verified from the ASA. Return traffic confirmed
-! from the switch side by ping to 192.168.10.1.
+! ping 8.8.8.8 from 192.168.10.2 — success
+! show xlate — PAT Global 192.168.1.2 Local 192.168.10.2
+! show conn  — ICMP outside 8.8.8.8 inside 192.168.10.2, bytes 144
