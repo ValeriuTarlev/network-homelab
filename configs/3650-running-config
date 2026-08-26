@@ -1,6 +1,7 @@
 ================================================================
 DEVICE: Cisco Catalyst 3650-24PD
-IOS-XE: 16.12.5b  |  License: IP Base (Smart License, evaluation)
+IOS-XE: 16.12.5b  |  License: IP Base (Smart, eval — expires ~Sept 11 2026)
+SN: FDO2006E03V
 DATE: August 2026
 ================================================================
 
@@ -24,6 +25,8 @@ interface Vlan1
 interface Vlan10
  ip address 192.168.10.2 255.255.255.0
  no shutdown
+! Management plane only. ip routing is disabled, so this is not a gateway
+! and carries no user traffic.
 
 ip default-gateway 192.168.10.1
 ! Only honoured while ip routing is disabled
