@@ -1,0 +1,38 @@
+================================================================
+DEVICE: Cisco 891-K9 Router
+IOS: 15.1(4)M4  |  SN: FTX1630831E
+DATE: August 2026
+================================================================
+
+hostname R-891
+ip domain-name homelab.local
+enable secret <redacted>
+
+! --- Interfaces ---
+
+interface GigabitEthernet0
+ description Uplink to SW-3650 G1/0/2
+ ip address 192.168.10.3 255.255.255.0
+ no shutdown
+! Routed WAN port.
+
+! --- Routing ---
+
+router ospf 1
+ router-id 192.168.10.3
+ network 192.168.10.0 0.0.0.255 area 0
+! IOS uses wildcard mask here; the ASA side uses a subnet mask.
+! No static default route — 0.0.0.0/0 is learned from the ASA via OSPF.
+
+! --- Verification ---
+!
+! show ip ospf neighbor
+! Neighbor ID     Pri  State     Dead Time  Address        Interface
+! 192.168.10.1     1   FULL/BDR  00:00:30   192.168.10.1   GigabitEthernet0
+!
+! show ip route
+! O*E2  0.0.0.0/0 [110/1] via 192.168.10.1, GigabitEthernet0
+! C     192.168.10.0/24 is directly connected, GigabitEthernet0
+! L     192.168.10.3/32 is directly connected, GigabitEthernet0
+!
+! ping 8.8.8.8 — success, with no static route configured
