@@ -17,4 +17,4 @@ PID: CISCO891-K9   VID: V02   SN: FTX1630831E
 - Previous config had VLANs 7, 10, 20, 60 from prior deployment
 - Config wiped and fresh credentials set
 - IOS 15.1(4)M4 supports OSPF, EIGRP, BGP, NAT, VPN
-- GigabitEthernet0 will be used as uplink to ASA
+- GigabitEthernet0 used as uplink to Catalyst 3650 G1/0/2 (192.168.10.3)
