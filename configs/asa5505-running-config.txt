@@ -35,8 +35,16 @@ interface Vlan20
 ! no forward required — Base license allows only 2 fully routed interfaces
 
 ! --- Routing ---
-
+ 
 route outside 0.0.0.0 0.0.0.0 192.168.1.1
+ 
+router ospf 1
+ router-id 192.168.10.1
+ network 192.168.10.0 255.255.255.0 area 0
+ log-adj-changes
+ default-information originate
+! ASA uses a subnet mask here; IOS uses a wildcard. default-information
+! originate injects the static default into OSPF so the 891 learns it.
 
 ! --- NAT / PAT ---
 
@@ -73,10 +81,11 @@ boot system disk0:/asa825-26-k8.bin
 
 ! --- Verification ---
 !
-! Vlan1   192.168.1.2    up/up    (outside)
-! Vlan10  192.168.10.1   up/up    (inside)
-! Vlan20  192.168.20.1   down/down (dmz — E0/2 shut, no host attached)
+! Vlan1   192.168.1.2    up/up      (outside)
+! Vlan10  192.168.10.1   up/up      (inside)
+! Vlan20  192.168.20.1   down/down  (dmz — E0/2 shut, no host)
 !
-! ping 8.8.8.8 from 192.168.10.2 — success
+! show ospf neighbor — 192.168.10.3 FULL, GigabitEthernet0 on R-891
 ! show xlate — PAT Global 192.168.1.2 Local 192.168.10.2
 ! show conn  — ICMP outside 8.8.8.8 inside 192.168.10.2, bytes 144
+! ping 8.8.8.8 from 192.168.10.2 and 192.168.10.3 — success
