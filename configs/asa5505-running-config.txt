@@ -1,39 +1,46 @@
 ================================================================
 DEVICE: Cisco ASA 5505
-ASA OS: 8.2(5)26  |  License: Base
+ASA OS: 8.2(5)26  |  License: Base 
 DATE: August 2026
 ================================================================
-
+ 
 hostname ASA-5505
 domain-name homelab.local
 enable password <redacted>
-
+ 
 ! --- Interfaces ---
-
+ 
 interface Ethernet0/0
 ! Outside port — VLAN 1 by default, uplink to home router
-
+ 
 interface Ethernet0/1
  switchport access vlan 10
 ! Inside port — to Catalyst 3650 G1/0/1
-
+ 
+interface Ethernet0/2
+ switchport access vlan 20
+ no shutdown
+! DMZ port — direct to DMZ host, does not pass through the switch
+ 
 interface Vlan1
  nameif outside
  security-level 0
  ip address 192.168.1.2 255.255.255.0
-
+! .2 chosen to stay clear of the Optimum DHCP pool (starts at .11)
+ 
 interface Vlan10
  nameif inside
  security-level 100
  ip address 192.168.10.1 255.255.255.0
-
+ 
 interface Vlan20
  no forward interface Vlan1
  nameif dmz
  security-level 50
  ip address 192.168.20.1 255.255.255.0
-! no forward required — Base license allows only 2 fully routed interfaces
-
+! no forward required — Base license allows only 2 fully routed interfaces.
+! DMZ cannot send directly to the outside interface as a result.
+ 
 ! --- Routing ---
  
 route outside 0.0.0.0 0.0.0.0 192.168.1.1
@@ -45,15 +52,38 @@ router ospf 1
  default-information originate
 ! ASA uses a subnet mask here; IOS uses a wildcard. default-information
 ! originate injects the static default into OSPF so the 891 learns it.
-
+ 
 ! --- NAT / PAT ---
-
+ 
 nat (inside) 1 192.168.10.0 255.255.255.0
 global (outside) 1 interface
 ! Pre-8.3 syntax. PAT to the outside interface address.
-
+! 8.3+ equivalent: object network + nat (inside,outside) dynamic interface
+ 
+static (inside,dmz) 192.168.10.0 192.168.10.0 netmask 255.255.255.0
+! Identity NAT. Real and mapped addresses are the same, so nothing is actually
+! translated — the rule exists only to satisfy 8.2 NAT control, which requires
+! a translation for every inside-to-anywhere flow once any nat (inside) exists.
+! Chosen over global (dmz) 1 interface so the DMZ sees real inside addresses.
+ 
+! --- Access control ---
+ 
+access-list DMZ_IN extended deny ip 192.168.20.0 255.255.255.0 192.168.10.0 255.255.255.0 log
+access-list DMZ_IN extended permit tcp 192.168.20.0 255.255.255.0 any eq https
+access-list DMZ_IN extended permit udp 192.168.20.0 255.255.255.0 any eq domain
+access-list DMZ_IN extended permit udp 192.168.20.0 255.255.255.0 any eq ntp
+access-list DMZ_IN extended permit icmp 192.168.20.0 255.255.255.0 any echo
+access-list DMZ_IN extended deny ip any any log
+!
+access-group DMZ_IN in interface dmz
+! Specific deny before general permits — ACLs match top-down. Attaching an ACL
+! overrides default security-level behaviour, so the deny line is required;
+! without it the permits would open a path the security levels were blocking.
+! Permitted set is deliberately narrow: HTTPS, DNS, NTP. ICMP echo is for
+! testing only and would not belong in production.
+ 
 ! --- Inspection ---
-
+ 
 class-map inspection_default
  match default-inspection-traffic
 !
@@ -62,11 +92,16 @@ policy-map global_policy
   inspect icmp
 !
 service-policy global_policy global
-! class-map match criteria and service-policy were both missing after an
-! earlier write erase — restored. Without both, ICMP replies are dropped.
-
+! Both the class-map match criteria and the service-policy were missing after
+! an earlier write erase. Without both, ICMP replies are dropped as unsolicited.
+ 
+! --- Logging ---
+ 
+logging enable
+logging buffered informational
+ 
 ! --- Management ---
-
+ 
 username admin password <redacted> privilege 15
 aaa authentication ssh console LOCAL
 ssh 192.168.10.0 255.255.255.0 inside
@@ -74,33 +109,22 @@ ssh version 2
 ssh timeout 10
 ! SSH from IOS-XE 16.12 clients fails at key exchange — ASA 8.2 offers only
 ! diffie-hellman-group1-sha1, which newer IOS-XE has removed. Console only.
-
+ 
 ! --- Boot ---
-
+ 
 boot system disk0:/asa825-26-k8.bin
-
+! Upgrade to 9.2(4) blocked by lack of SmartNet contract.
+ 
 ! --- Verification ---
 !
-! Vlan1   192.168.1.2    up/up      (outside)
-! Vlan10  192.168.10.1   up/up      (inside)
-! Vlan20  192.168.20.1   down/down  (dmz — E0/2 shut, no host)
+! Vlan1   192.168.1.2    up/up  (outside)
+! Vlan10  192.168.10.1   up/up  (inside)
+! Vlan20  192.168.20.1   up/up  (dmz)
+!
+! inside → DMZ       permitted  ping 192.168.20.10 from 192.168.10.3 — success
+! DMZ → inside       denied     %ASA-6-106100, ACL DMZ_IN hitcnt incrementing
+! DMZ → internet     denied     %ASA-5-509001, no forward (Base license)
+! inside → internet  permitted  ping 8.8.8.8 from 192.168.10.2 — success
 !
 ! show ospf neighbor — 192.168.10.3 FULL, GigabitEthernet0 on R-891
 ! show xlate — PAT Global 192.168.1.2 Local 192.168.10.2
-! show conn  — ICMP outside 8.8.8.8 inside 192.168.10.2, bytes 144
-! ping 8.8.8.8 from 192.168.10.2 and 192.168.10.3 — success
-
-! --- NAT (DMZ) ---
-
-static (inside,dmz) 192.168.10.0 192.168.10.0 netmask 255.255.255.0
-! Identity NAT — inside hosts keep real addresses toward the DMZ.
-! Required because 8.2 NAT control demands a translation rule for every
-! inside-to-anywhere flow once any nat (inside) statement exists.
-
-! --- Logging ---
-
-logging enable
-logging buffered informational
-! ping 192.168.20.10 from 192.168.10.3 — success (inside to DMZ, permitted)
-! ping 192.168.10.3 from 192.168.20.10 — denied, %ASA-3-106014 (DMZ to inside)
-! ping 8.8.8.8 from 192.168.20.10 — timeout (no NAT for DMZ)
