@@ -89,3 +89,18 @@ boot system disk0:/asa825-26-k8.bin
 ! show xlate — PAT Global 192.168.1.2 Local 192.168.10.2
 ! show conn  — ICMP outside 8.8.8.8 inside 192.168.10.2, bytes 144
 ! ping 8.8.8.8 from 192.168.10.2 and 192.168.10.3 — success
+
+! --- NAT (DMZ) ---
+
+static (inside,dmz) 192.168.10.0 192.168.10.0 netmask 255.255.255.0
+! Identity NAT — inside hosts keep real addresses toward the DMZ.
+! Required because 8.2 NAT control demands a translation rule for every
+! inside-to-anywhere flow once any nat (inside) statement exists.
+
+! --- Logging ---
+
+logging enable
+logging buffered informational
+! ping 192.168.20.10 from 192.168.10.3 — success (inside to DMZ, permitted)
+! ping 192.168.10.3 from 192.168.20.10 — denied, %ASA-3-106014 (DMZ to inside)
+! ping 8.8.8.8 from 192.168.20.10 — timeout (no NAT for DMZ)
