@@ -1,55 +1,61 @@
 # Device Inventory
 
-## Cisco ASA 5505
+## Fortinet FortiGate 60E
 | Field | Detail |
 |---|---|
-| **Role** | Perimeter firewall, NAT, VPN termination |
-| **OS Version** | ASA 8.2(5)26 |
-| **License** | Base — 3 VLANs, 10 inside hosts |
-| **Serial** | JMX1346Z2Y5 |
-| **RAM** | 256MB |
-| **Flash** | 128MB |
-| **Encryption** | 3DES/AES enabled |
-| **Console** | COM3 via Keyspan USB serial adapter |
-| **Upgrade path** | 8.2(5) → 9.2(4) pending image acquisition |
-
-### Interface layout
-| Interface | Role |
-|---|---|
-| VLAN 1 | Inside (user network) |
-| VLAN 2 | Outside (simulated WAN) |
-| VLAN 3 | DMZ |
+| **Role** | Primary perimeter firewall — NAT, routing, firewall policy |
+| **Management** | Web GUI at `https://10.10.99.2` (VLAN 99) |
+| **Interfaces in use** | WAN1, Internal1, Internal2 |
 
 ---
 
 ## Cisco Catalyst 3650-24PD
 | Field | Detail |
 |---|---|
-| **Role** | Core switch, VLANs, inter-VLAN routing |
+| **Role** | Core switch — VLAN tagging, SVIs, inter-VLAN routing |
 | **OS Version** | IOS-XE 16.12.5b |
-| **License** | IP Base — Smart License eval (45 days from July 28, 2026) |
-| **Serial** | FDO2006E03V |
+| **License** | IP Base — Smart License eval |
 | **RAM** | 4GB |
 | **Flash** | 1.6GB |
 | **Ports** | 24x PoE+ GigabitEthernet, 2x 10G SFP+ |
-| Console | COM5 via USB direct (mini-USB) |
+| **Console** | COM5 via USB direct (mini-USB) |
 
 ---
 
-## Cisco 891-K9 Router
+## Cisco ASA 5505 — retired from active path
 | Field | Detail |
 |---|---|
-| **Role** | WAN simulation, dynamic routing |
+| **Role** | Former perimeter firewall; kept as a baselined reference |
+| **OS Version** | ASA 8.2(5)26 |
+| **License** | Base — 3 VLANs, 10 inside hosts |
+| **RAM** | 256MB |
+| **Flash** | 128MB |
+| **Note** | Outside address (192.168.1.2) reclaimed and reused on the FortiGate's WAN1 |
+
+---
+
+## Cisco 891-K9 — reserved for branch role
+| Field | Detail |
+|---|---|
+| **Role** | Cabled, not yet in the routing path; planned as a branch site once site-to-site IPsec VPN is configured |
 | **IOS Version** | 15.1(4)M4 |
-| **Serial** | FTX1630831E |
 | **Ports** | 8x FastEthernet, 1x GigabitEthernet |
-| **Console** | COM3 via Keyspan (shared) |
+
+---
+
+## Dell OptiPlex 3070 (Proxmox host)
+| Field | Detail |
+|---|---|
+| **Role** | Virtualization host — future DNS, DHCP, and test-client VMs |
+| **CPU** | i5-8400, 6-core |
+| **RAM** | 16GB DDR4 |
+| **Network** | VLAN 20 (Server), 10.10.20.2 |
 
 ---
 
 ## Management Station
 | Field | Detail |
 |---|---|
-| **Role** | Console access, GNS3, documentation |
-| **Tools** | GNS3, PuTTY, Wireshark |
+| **Role** | Admin/GUI access, GNS3, documentation |
+| **Network** | VLAN 99 (Management), 10.10.99.10 |
 | **Console adapter** | Keyspan USA-19HS (COM3) |

@@ -1,82 +1,96 @@
 # Network Home Lab
 
-Three pieces of used Cisco gear on a shelf, wired into a real network behind my
-home router. I built this to get past the point where I'd only configured things
-in Packet Tracer — physical hardware breaks in ways simulators don't, and working
-through that is most of what I've learned here.
+Physical home lab originally built around a Cisco ASA 5505, Catalyst 3650-24PD,
+and Cisco 891 router. The design has since moved to a Fortinet FortiGate 60E as
+the primary firewall, with the Catalyst 3650 handling inter-VLAN routing
+directly — the ASA is retired from the active path, and the 891 is cabled but
+reserved for a future branch-site role.
 
-Everything is configured from the CLI. No ASDM, no web GUI.
+Cisco gear is configured from the CLI. The FortiGate is configured through its
+web GUI — that's Fortinet's normal management model; CLI there is mostly for
+diagnostics (sniffer, debug) rather than day-to-day policy work.
 
 ---
 
 ## Topology
 
-![Network Topology](docs/diagrams/Network_Topology.svg)
+![Logical Topology](docs/diagrams/logical-topology.png)
+![Physical Topology](docs/diagrams/physical-topology.png)
 
 ## Hardware
 
-**Cisco ASA 5505** running 8.2(5)26 on a Base license. Handles the security
-zones and NAT for the lab. It arrived booting into a 2007 image that had to be
-cleared out from rommon before it would come up on the right one.
+**FortiGate 60E** — primary perimeter firewall. NAT, routing, and firewall
+policy for all internal VLANs live here.
 
-**Catalyst 3650-24PD** running IOS-XE 16.12.5b. Layer 2 access and the management
-SVI for the inside network.
+**Catalyst 3650-24PD** — core switch. Handles VLAN tagging, SVIs, and
+inter-VLAN routing, then hands off to the FortiGate for anything leaving the
+internal network.
 
-**Cisco 891-K9** running 15.1(4)M4. Came password-locked with no way in — I
-recovered it through rommon. It's cabled but not yet in the routing path.
+**Cisco ASA 5505** — retired from the active path. Kept as a baselined
+reference; its outside address was reclaimed and reused on the FortiGate's
+WAN1.
 
-Console access is a Keyspan USA-19HS on COM3 that I move between the ASA and the
-router, plus a mini-USB straight into the switch on COM5.
+**Cisco 891-K9** — cabled, not yet in the routing path. Reserved for a
+branch-site role once site-to-site IPsec VPN goes in.
+
+**Dell OptiPlex 3070 (Proxmox)** — virtualization host on VLAN 20, for future
+VM-based services (DNS, DHCP, test clients).
+
+Console access: Keyspan USA-19HS on COM3 (ASA/891), mini-USB on COM5 (switch).
 
 ---
 
 ## What it does right now
 
-The inside network has working internet access. The ASA is doing PAT for
-192.168.10.0/24 out to its outside interface at 192.168.1.2, with stateful
-inspection handling return traffic.
+Internal VLANs route through the Catalyst 3650 and out through the FortiGate
+with NAT overload on WAN1.
 
 ```
 Home Router 192.168.1.1
       |
-   ASA 5505      outside 192.168.1.2  ·  inside 192.168.10.1  ·  dmz 192.168.20.1
+  FortiGate 60E    WAN1 192.168.1.2 · Internal1 10.10.99.2 · Internal2 10.10.10.2
+      |                    |
+      |              Catalyst 3650
+      |              VLANs 10/20/30/40/50/99
       |
-Catalyst 3650    SVI 192.168.10.2
-      |
-  891 Router     192.168.10.3
+   (891 — not yet in path)
 ```
 
-The DMZ zone is configured — its own subnet, security level 50, and the
-`no forward` command the Base license requires — but nothing is plugged into it
-yet, so the interface sits down/down. I've left it that way rather than pretend
-otherwise.
+VLANs 30 (HR), 40 (IT), and 50 (Business) have ports allocated and gateways
+configured but no hosts attached yet — reserved for future test clients.
 
-Next up is OSPF between the ASA and the 891, then ACLs, syslog, and a
-site-to-site VPN.
+Next: DHCP and DNS (likely a Proxmox-hosted VM), then site-to-site IPsec to the
+891, then Ansible once the topology settles.
 
 ---
 
 ## A few design choices
 
-**The switch doesn't route.** `ip routing` is off on purpose, so all traffic
-between segments has to go through the firewall.
+**The switch routes now.** Unlike the ASA-based design, the Catalyst 3650
+handles inter-VLAN routing directly via its SVIs. The FortiGate doesn't see
+every VLAN individually — just the two transit links it needs.
 
-**No trunks.** Only VLAN 10 crosses either uplink, so there's nothing to tag.
-The 5505's Base license doesn't support trunking anyway.
+**Two separate links to the FortiGate.** Internal1 (10.10.99.x) carries
+management/transit traffic; Internal2 (10.10.10.x) is a second routed link and
+the switch's own default gateway out. These evolved as the design was reworked
+rather than being planned up front.
 
-**The Base license limits the design.** It only allows two fully routed
-interfaces, so the DMZ needs `no forward interface Vlan1` — it can't go straight
-out, it has to route through inside first.
+**NAT policy scope.** The firewall policy's source object covers the whole
+internal supernet (10.10.0.0/16) rather than per-VLAN objects, so adding a new
+VLAN later doesn't require a new policy.
+
+---
+
+## Troubleshooting write-up
+
+[Why outbound NAT wasn't working](write-ups/outbound-nat-troubleshooting.md) —
+diagnosing a NAT policy that was configured correctly but scoped to the wrong
+destination, and why pinging on-link devices gave false confidence that it was
+working.
 
 ---
 
 ## Addressing
-
-| Segment | Subnet | Gateway |
-|---|---|---|
-| Home / outside | 192.168.1.0/24 | 192.168.1.1 (not managed) |
-| Inside | 192.168.10.0/24 | 192.168.10.1 (ASA) |
-| DMZ | 192.168.20.0/24 | 192.168.20.1 (ASA) |
 
 Full breakdown in [docs/ip-addressing.md](docs/ip-addressing.md).
 
@@ -85,11 +99,13 @@ Full breakdown in [docs/ip-addressing.md](docs/ip-addressing.md).
 ## Layout
 
 ```
-/configs      Device configurations
-/docs         Addressing, inventory, topology
+/configs      Device configurations (ASA/891/3650 historical; FortiGate export pending)
+/docs         Addressing, inventory, topology, diagrams
+/write-ups    Troubleshooting notes and design reasoning
 ```
 
-Passwords are stripped out of anything committed here.
+Passwords, serials, and any identifying metadata are stripped from anything
+committed here.
 
 ---
 

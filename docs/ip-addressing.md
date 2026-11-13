@@ -5,104 +5,71 @@
 | Network | Subnet | Role |
 |---|---|---|
 | Home Network | 192.168.1.0/24 | Uplink — not managed |
-| Inside (Lab) | 192.168.10.0/24 | Internal lab network |
-| DMZ | 192.168.20.0/24 | Demilitarized zone |
+| Internal (transit) | 10.10.10.0/24 | FortiGate Internal2 ↔ switch link; switch's own default route points here |
+| Server | 10.10.20.0/24 | Proxmox host |
+| HR | 10.10.30.0/24 | Reserved, no hosts |
+| IT | 10.10.40.0/24 | Reserved, no hosts |
+| Business | 10.10.50.0/24 | Reserved, no hosts |
+| Management | 10.10.99.0/24 | FortiGate Internal1 ↔ switch link; admin/laptop access |
 
 ---
 
-## ASA 5505 Interfaces
+## FortiGate 60E Interfaces
 
-| Interface | nameif | Security Level | IP Address | Subnet Mask | Physical Port |
-|---|---|---|---|---|---|
-| Vlan1 | outside | 0 | 192.168.1.2 | 255.255.255.0 | Ethernet0/0 |
-| Vlan10 | inside | 100 | 192.168.10.1 | 255.255.255.0 | Ethernet0/1 |
-| Vlan20 | dmz | 50 | 192.168.20.1 | 255.255.255.0 | Ethernet0/2 (shut) |
-
-On the 5505 the physical ports are switchports — addresses are assigned to the
-VLAN interfaces, not to the Ethernet ports themselves. Ethernet0/2 is currently
-shut down with no DMZ host attached, so Vlan20 reads down/down.
-
-VLAN 20 carries `no forward interface Vlan1` — the Base license permits only two
-fully routed interfaces, so DMZ traffic cannot go directly out and must route
-through inside.
-
----
-
-## Catalyst 3650
-
-| Interface | VLAN | IP Address | Subnet Mask | Role |
-|---|---|---|---|---|
-| Vlan10 | Inside | 192.168.10.2 | 255.255.255.0 | Management only |
-| Vlan1 | — | none | — | Shut down, unused |
-
-`ip routing` is disabled. The SVI is a management address for SSH and syslog — it
-is not a gateway and forwards no user traffic. All inter-segment routing happens
-on the ASA.
-
-| Port | VLAN | Mode | Connects to |
+| Interface | Name | IP Address | Connects to |
 |---|---|---|---|
-| GigabitEthernet1/0/1 | 10 | access | ASA Ethernet0/1 |
-| GigabitEthernet1/0/2 | 10 | access | 891 GigabitEthernet0 |
+| WAN1 | Outside Going to HRouter | 192.168.1.2/24 | Home router |
+| Internal1 | Management Link | 10.10.99.2/24 | Switch G1/0/9 |
+| Internal2 | Internal Link to Switch | 10.10.10.2/24 | Switch G1/0/1 |
+| DMZ | dmz | 10.10.60.1/24 | Configured, unused |
 
 ---
 
-## Cisco 891 Router
+## Catalyst 3650 SVIs
 
-| Interface | IP Address | Subnet Mask | Role |
-|---|---|---|---|
-| GigabitEthernet0 | 192.168.10.3 | 255.255.255.0 | Uplink to SW-3650 G1/0/2 |
+| VLAN | SVI | Role |
+|---|---|---|
+| 10 | 10.10.10.1 | Transit to FortiGate Internal2; switch's own next-hop for its default route |
+| 20 | 10.10.20.1 | Server gateway |
+| 30 | 10.10.30.1 | HR gateway (reserved) |
+| 40 | 10.10.40.1 | IT gateway (reserved) |
+| 50 | 10.10.50.1 | Business gateway (reserved) |
+| 99 | 10.10.99.1 | Management gateway |
 
-The 891 has no Fa0/0. Fa0–Fa7 are an integrated Layer 2 switch and cannot take an
-address directly; only Fa8 and Gi0 are routed interfaces.
+`ip routing` is enabled — unlike the ASA-based design, the switch now does
+inter-VLAN routing directly instead of leaving it to the firewall.
 
 ---
 
 ## Routing
 
-| Protocol | Devices | Area | Notes |
-|---|---|---|---|
-| OSPF 1 | ASA (RID 192.168.10.1), 891 (RID 192.168.10.3) | 0 | ASA is ASBR |
-| Static | ASA outside | — | 0.0.0.0/0 via 192.168.1.1 |
-
-The ASA holds the only static default route and injects it into OSPF with
-`default-information originate`. The 891 learns it as `O*E2 0.0.0.0/0` and has no
-static routes of its own.
-
----
-
-## Default Gateways
-
-| Device | Default Gateway |
-|---|---|
-| ASA Outside | 192.168.1.1 (home router) |
-| Catalyst 3650 | 192.168.10.1 (ASA inside) |
-| Cisco 891 | 192.168.10.1 (ASA inside) |
-| DMZ hosts | 192.168.20.1 (ASA DMZ) |
-
----
-
-## NAT
-
-| Type | Source | Translated to |
+| Device | Route | Via |
 |---|---|---|
-| PAT | 192.168.10.0/24 (inside) | Outside interface (192.168.1.2) |
+| Switch | 0.0.0.0/0 | 10.10.10.2 (FortiGate Internal2) |
+| FortiGate | 10.10.0.0/16 | 10.10.10.1 (switch VLAN 10 SVI), out Internal2 |
+| FortiGate | 0.0.0.0/0 | 192.168.1.1 (home router), out WAN1 |
 
-Pre-8.3 syntax — `nat (inside) 1` paired with `global (outside) 1 interface`.
-No NAT configured for the DMZ yet.
+---
 
---- 
+## NAT and Firewall Policy
 
-## Planned Devices (via GNS3) 
+| Policy | Source | Destination | Service | NAT |
+|---|---|---|---|---|
+| Inside to Outside | Internal (10.10.0.0/16) | all | PING, DNS, HTTPS | Overload, outgoing interface address |
 
-| Device | Network | IP Address | Role |
-|---|---|---|---|
-| DMZ Host | 192.168.20.0/24 | 192.168.20.10 | DMZ server (VM) |
-| Workstation | 192.168.10.0/24 | 192.168.10.10 | Inside network client (VM) |
+There's no outside-to-inside policy — FortiGate's stateful session tracking
+handles return traffic without one. The destination was originally scoped to
+the home router's own subnet (192.168.1.0/24) rather than "all," which let
+pings to on-link devices succeed while silently dropping anything actually
+bound for the internet. See the [NAT troubleshooting write-up](../write-ups/outbound-nat-troubleshooting.md)
+for the full diagnosis.
 
 ---
 
 ## Notes
 
-- ASA outside interface statically assigned to avoid DHCP conflicts
-- Home network 192.168.1.0/24 is not managed — used as WAN uplink only
-- ASA Base license limits lab to 3 VLANs — inside, outside, DMZ
+- FortiGate's default DNS (FortiGuard, 96.45.45.45 / 96.45.46.46) was
+  unreachable on this unregistered unit; DNS is set to 8.8.8.8 instead
+- The ASA's old outside address (192.168.1.2) was reclaimed and reused on the
+  FortiGate's WAN1 once removed from the ASA's static config
+- DMZ interface is configured (10.10.60.0/24) but nothing is cabled to it yet
