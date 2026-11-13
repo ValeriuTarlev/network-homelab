@@ -14,7 +14,10 @@ diagnostics (sniffer, debug) rather than day-to-day policy work.
 
 ## Topology
 
+### Logical Topology
 ![Logical Topology](docs/diagrams/logical-topology.png)
+
+### Physical Topology
 ![Physical Topology](docs/diagrams/physical-topology.png)
 
 ## Hardware
